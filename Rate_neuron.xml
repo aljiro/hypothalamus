@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<SpineML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.shef.ac.uk/SpineMLComponentLayer" xsi:schemaLocation="http://www.shef.ac.uk/SpineMLComponentLayer SpineMLComponentLayer.xsd">
+ <ComponentClass name="Rate neuron" type="neuron_body">
+  <Annotation>
+   <SpineCreator>
+    <Text key="r"></Text>
+   </SpineCreator>
+  </Annotation>
+  <Dynamics initial_regime="Regime">
+   <Regime name="Regime">
+    <TimeDerivative variable="r">
+     <MathInline>-r + 1/(1 + exp(-sigma*in))</MathInline>
+    </TimeDerivative>
+   </Regime>
+   <StateVariable name="r" dimension="Hz"/>
+  </Dynamics>
+  <AnalogReducePort name="in" reduce_op="+" dimension="?"/>
+  <AnalogSendPort name="r"/>
+  <Parameter name="sigma" dimension="?"/>
+  <Parameter name="tau" dimension="s"/>
+ </ComponentClass>
+</SpineML>
