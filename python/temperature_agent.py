@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # --------------------------------------------------------------------
 class Agent:
 
-	def __init__(self, x, y, theta, Tb, Tp = 37.0, radius = 1.0, k1 = 0.99, G = 0.1 ):
+	def __init__(self, x, y, theta, Tb, Tp = 37.0, radius = 2.0, k1 = 0.99, G = 0.7 ):
 		self.s0 = np.array([x, y, theta, Tb, 1.0]);
 		self.Tp = Tp # Prefered temperature
 		self.G = G # Heat generation rate
@@ -19,32 +19,38 @@ class Agent:
 		self.state = None
 
 	def getTransformation( self, x, y, theta ):
-		return np.matrix([[np.cos(theta), -np.sin(theta), x], 
-						[np.sin(theta), np.cos(theta), y], 
-						[0, 0, 1]])
+		return np.array([[np.cos(theta), -np.sin(theta), x], 
+						 [np.sin(theta), np.cos(theta), y], 
+						 [0, 0, 1]])
 
 	def updateSensorPositions( self, x, y, theta ):
+		pl = np.array([self.radius, 0, 1])
+		pr = np.array([-self.radius, 0, 1])
+
 		M = self.getTransformation( x, y, theta )
 
-		for k in self.sensors:
-			self.sensors[k] = np.dot(M, self.sensors[k])
+		self.sensors = { 'T_left': np.dot(M,pl), 
+					'T_right': np.dot(M,pr), 
+					'F_left': np.dot(M,pl),
+					'F_right': np.dot(M,pr) }
 
 	def initSensors(self, x, y, theta):
-		pl = [self.radius, 0, 0]
-		pr = np.array([-self.radius, 0, 0])
+		pl = np.array([self.radius, 0, 1])
+		pr = np.array([-self.radius, 0, 1])
 
 		M = self.getTransformation( x, y, theta )
 
-		self.sensors = { 'T_left': np.dot(M,pl).T, 
-					'T_right': np.dot(M,pr).T, 
-					'F_left': np.dot(M,pl).T,
-					'F_right': np.dot(M,pr).T }
+		self.sensors = { 'T_left': np.dot(M,pl), 
+					'T_right': np.dot(M,pr), 
+					'F_left': np.dot(M,pl),
+					'F_right': np.dot(M,pr) }
 
 	def init( self, tf, h ):
 		m = int(tf/h)
 
 		self.state = np.zeros( (self.s0.size, m) )
 		self.state[:,0] = self.s0
+
 
 	def getSensorData( self, sensor ):
 		if self.enviroment is None:
@@ -64,6 +70,8 @@ class Agent:
 		Fl = self.getSensorData( 'F_right' )
 
 		Ta = (Tl + Tr)/2.0
+
+		print('la: {}, Tr: {}'.format(Tl, Tr))
 		# State variables
 		theta = u[2]
 		Tb = u[3]
@@ -76,16 +84,18 @@ class Agent:
 		dx = mu*np.array([np.cos(theta), np.sin(theta)])
 		k2 = 1.0
 		Tc = Tb # No contact
-		alpha = 0.1
+		alpha = 1.0
 		dTb = self.G - self.k1*(Tb - Ta)*self.A - k2*(1 - self.A)*(Tb - Tc)
 		dE = -alpha*self.G + self.F
 		# nonlinearity
-		sigma = 0.1
+		sigma = 1.0
 		f = lambda x : 1.0/(1 + np.exp(-sigma*x))
 
 		if( dHeat > dFood ):
-			dTheta = f( (Tb - self.Tp)*(Tl - Tr) )
+			print('Temperature drive')
+			dTheta = (Tb - self.Tp)*(Tr - Tl) 
 		else:
+			print('Energy Drives')
 			dTheta = f( E )
 
 		return np.array([dx[0], dx[1], dTheta, dTb, dE ])
@@ -99,14 +109,21 @@ class Agent:
 		self.theta = self.state[2, c_step + 1]
 		self.x = self.state[0, c_step + 1]
 		self.y = self.state[1, c_step + 1]
+		print("theta: {}".format(self.theta))
 		self.updateSensorPositions( self.x, self.y, self.theta )
 		self.F = self.enviroment.getFood( self.x, self.y )
 
 	def draw( self ):
 		c = plt.Circle( (self.x, self.y), self.radius, color = 'k' )
+		p1 = self.sensors['T_left']
+		p2 = self.sensors['T_right']
+		cs1 = plt.Circle( (p1[0], p1[1]), 1, color = [0.5,0.5,0.5] )
+		cs2 = plt.Circle( (p2[0], p2[1]), 1, color = [0.5,0.5,0.5] )
 		fig = plt.gcf()
 		ax = fig.gca()
 		ax.add_artist(c)
+		ax.add_artist(cs1)
+		ax.add_artist(cs2)
 		
 
 # --------------------------------------------------------------------
@@ -117,12 +134,13 @@ class Enviroment:
 		self.w = 100
 		self.h = 100
 		self.food_sources = []
-		sigma = 0.1
+		sigma = 30.0
 		self.g = lambda x,y,x0,y0: np.exp(-(( x - x0)**2 + (y - y0)**2)/(2*sigma**2) )
 		self.Tmin = 15.0
 		self.Tmax = 45.0
 		self.T = lambda x,y : ((self.Tmax - self.Tmin)/self.w)*x + self.Tmin
-		
+		self.time = None
+		self.ax_gradient = None
 
 	def addFoodSource( self, x, y ):
 		self.food_sources.append((x, y))
@@ -139,8 +157,7 @@ class Enviroment:
 
 		return signal
 
-	def getFood( self, x, y ):
-		
+	def getFood( self, x, y ):		
 		for i in range(len(self.food_sources)):
 			x0,y0 = self.food_sources[i]
 
@@ -151,16 +168,18 @@ class Enviroment:
 
 	def draw( self ):
 		delta = 1.0
-		fig = plt.gcf()
-		cax = fig.gca()
-		axcolor = 'lightgoldenrodyellow'
-		ax_gradient = plt.axes([0.1, 0.8, 0.8, 0.09], facecolor=axcolor)	
-		ax_gradient.tick_params(bottom = False, left = False, top = False, labelbottom = False, labelleft = False)
-		ax_gradient.axis([0, self.w, self.Tmin, self.Tmax])
+		cax = plt.gca()
+
+		if self.ax_gradient is None:
+			self.ax_gradient = plt.axes([0.07, 0.83, 0.4, 0.09])	
+
+		plt.sca( self.ax_gradient )
+		self.ax_gradient.tick_params(bottom = False, left = True, top = False, labelbottom = False, labelleft = True)
+		self.ax_gradient.axis([0, self.w, self.Tmin, self.Tmax])
+		plt.yticks([self.Tmin, self.Tmax], [self.Tmin, self.Tmax])
 		xx = [0, self.w, self.w]
 		yy = [self.Tmin, self.Tmin, self.Tmax]
-		ax_gradient.fill( xx, yy, color=[0.5,0.5,0.7] )
-
+		self.ax_gradient.fill( xx, yy, color=[0.8,0.5,0.5] )
 
 		plt.sca(cax)
 
@@ -171,26 +190,14 @@ class Enviroment:
 			y = np.arange(0, self.h, delta)
 
 			X, Y = np.meshgrid(x, y)
-			Z = np.exp(-(X - x0*np.ones(X.shape))**2 - (Y - y0*np.ones(Y.shape))**2)
-			# Z = self.g(X,x0*np.ones(X.shape),Y, y0*np.ones(Y.shape))
+			#Z = np.exp(-(X - x0*np.ones(X.shape))**2 - (Y - y0*np.ones(Y.shape))**2)
+			Z = self.g(X,Y, x0*np.ones(X.shape), y0*np.ones(Y.shape))		
+			CS = plt.contour(X, Y, Z, origin = 'lower' )
 
-			nr, nc = Z.shape
-
-			# put NaNs in one corner:
-			Z[-nr // self.w:, -nc // self.h:] = np.nan
-			# contourf will convert these to masked
-
-
-			Z = np.ma.array(Z)
-			# mask another corner:
-			Z[:nr // self.w, :nc // self.h] = np.ma.masked
-
-			# mask a circle in the middle:
-			interior = np.sqrt(X**2 + Y**2) < 0.5
-			Z[interior] = np.ma.masked
-
-			CS = plt.contourf(X, Y, Z, 10, cmap=plt.cm.hot)
-
+			c = plt.Circle( (x0, y0), 1.0, color = 'g' )
+			fig = plt.gcf()
+			ax = fig.gca()
+			ax.add_artist(c)
 
 
 # --------------------------------------------------------------------
@@ -201,17 +208,21 @@ class Simulation:
 		self.h = 0.01
 		self.agents = []
 		self.enviroment = Enviroment()
-		fig, ax = plt.subplots(figsize = (6,6) )
-		ax.set_position([0.1, 0.1, 0.8, 0.7])
+		fig, self.ax = plt.subplots(figsize = (10,5) )
+		self.ax.set_position([0.07, 0.1, 0.4, 0.7])
+		self.ax_temp = plt.axes([0.52, 0.7, 0.46, 0.2])	
+		self.ax_energy = plt.axes([0.52, 0.42, 0.46, 0.2])	
+		self.observed = None
 
-	def addAgent( self, a ):
+	def addAgent( self, a, observe = 1.0 ):
 		a.enviroment = self.enviroment
 		self.agents.append( a )
+		self.observed = len(self.agents)-1
 
 	def addFoodSource( self, x, y ):
 		self.enviroment.addFoodSource( x, y )
 
-	def draw( self ):
+	def draw( self, c_step, tf ):
 		# plt.subplots_adjust(left=0.1, bottom=0.25, right = 0.9, top = 0.95)
 
 		plt.ioff()
@@ -227,6 +238,19 @@ class Simulation:
 		for a in self.agents:
 			a.draw()
 
+		a = self.agents[self.observed]	
+		plt.sca(self.ax_temp)	
+		plt.cla()
+		self.ax_temp.plot(self.time[:c_step], a.state[3,:c_step])
+		self.ax_temp.axis([0, tf, 0, 40])	
+		self.ax_temp.set_title('Tb')	
+		plt.sca(self.ax_energy)
+		plt.cla()
+		self.ax_energy.plot(self.time[:c_step], a.state[4,:c_step])
+		self.ax_energy.axis([0, tf, 0, 1.1])
+		self.ax_energy.set_title('E')
+		plt.sca(self.ax)
+
 		#ax.margins(x = 0)
 		plt.pause(0.01)
 
@@ -234,22 +258,28 @@ class Simulation:
 	def run( self, tf ):
 		c_step = 0
 		t = 0.0
+		m = int(tf/self.h)
+		self.time = np.zeros((m, ))
 
 		for a in self.agents:
 			a.init( tf, self.h )
 
-		m = tf//self.h
+		while( c_step < m-1 ):
+			self.time[c_step] = t
 
-		while( c_step < m - 1 ):
 			for a in self.agents:
 				a.step( c_step, self.h, t )
 
-			self.draw()
+			self.draw( c_step, tf )
 			c_step += 1
+			t += self.h
+
+		plt.ioff()
+		plt.show()
 
 if __name__ == '__main__':
 	s = Simulation()
-	a = Agent( x = 50.0, y = 50.0, theta = 0.0, Tb = 37.0 )
+	a = Agent( x = 50.0, y = 50.0, theta = np.pi, Tb = 37.0 )
 	s.addAgent( a )
-	s.addFoodSource( 1, 90  )
+	s.addFoodSource( 20, 20  )
 	s.run( 10.0 )
