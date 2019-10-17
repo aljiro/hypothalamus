@@ -17,22 +17,24 @@ class Agent:
 		self.initSensors( x, y, theta )
 		self.F = 0
 		self.state = None
+		self.orientation = [np.cos(theta), np.sin(theta)]
 
 	def getTransformation( self, x, y, theta ):
 		return np.array([[np.cos(theta), -np.sin(theta), x], 
 						 [np.sin(theta), np.cos(theta), y], 
 						 [0, 0, 1]])
 
-	def updateSensorPositions( self, x, y, theta ):
-		pl = np.array([self.radius, 0, 1])
-		pr = np.array([-self.radius, 0, 1])
+	def updateSensorPositions( self, h, mu, x, y, theta0, theta ):
+		alpha = np.dot(self.orientation, theta)
+		M = self.getTransformation(0, 0, theta)
+		c = np.array([x, y, 0])
 
-		M = self.getTransformation( x, y, theta )
+		for s in self.sensors:
+			pos = self.sensors[s]
+			pos[[0,1]] += h*mu*np.array([np.cos(theta0), np.sin(theta0)])
+			self.sensors[s] = np.dot(M, pos - c) + c
 
-		self.sensors = { 'T_left': np.dot(M,pl), 
-					'T_right': np.dot(M,pr), 
-					'F_left': np.dot(M,pl),
-					'F_right': np.dot(M,pr) }
+		self.orientation = M[[0,1],[0,1]]*self.orientation
 
 	def initSensors(self, x, y, theta):
 		pl = np.array([self.radius, 0, 1])
@@ -77,8 +79,8 @@ class Agent:
 		Tb = u[3]
 		E = u[4]
 		# Drives
-		dHeat = np.abs(Tb - self.Tp)
-		dFood = np.heaviside(1 - E, 0.0)*(1 - E)
+		dHeat = np.abs(Tb - self.Tp)/(42.0 - 30.0)
+		dFood = 10*np.heaviside(1 - E, 0.0)*(1 - E)
 		mu = np.linalg.norm(np.array([dHeat, dFood]))
 
 		dx = mu*np.array([np.cos(theta), np.sin(theta)])
@@ -88,29 +90,32 @@ class Agent:
 		dTb = self.G - self.k1*(Tb - Ta)*self.A - k2*(1 - self.A)*(Tb - Tc)
 		dE = -alpha*self.G + self.F
 		# nonlinearity
-		sigma = 1.0
+		sigma = 0.5
 		f = lambda x : 1.0/(1 + np.exp(-sigma*x))
 
 		if( dHeat > dFood ):
-			print('Temperature drive')
+			print('Temperature drive: {}'.format((Tb - self.Tp)))
 			dTheta = (Tb - self.Tp)*(Tr - Tl) 
 		else:
 			print('Energy Drives')
 			dTheta = f( E )
 
-		return np.array([dx[0], dx[1], dTheta, dTb, dE ])
+		return mu, np.array([dx[0], dx[1], dTheta, dTb, dE ])
 
 
 	def step( self, c_step, h, t ):
-		dr = self.dmap( self.state[:, c_step], t )
+		mu, dr = self.dmap( self.state[:, c_step], t )
 		self.state[:, c_step + 1] = self.state[:, c_step] + h*dr
+		self.state[4] = np.heaviside(self.state[4], 0.5)*self.state[4]
 		# moving/ acting
+		dTheta = dr[2]
+
 		self.F = 0
 		self.theta = self.state[2, c_step + 1]
 		self.x = self.state[0, c_step + 1]
 		self.y = self.state[1, c_step + 1]
 		print("theta: {}".format(self.theta))
-		self.updateSensorPositions( self.x, self.y, self.theta )
+		self.updateSensorPositions( h, mu, self.x, self.y, self.state[2, c_step], self.theta )
 		self.F = self.enviroment.getFood( self.x, self.y )
 
 	def draw( self ):
