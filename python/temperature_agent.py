@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # --------------------------------------------------------------------
 class Agent:
 
-	def __init__(self, x, y, theta, Tb, Tp = 37.0, radius = 2.0, k1 = 0.99, G = 0.7 ):
+	def __init__(self, x, y, theta, Tb, Tp = 37.0, radius = 2.0, k1 = 0.99, G = 0.4 ):
 		self.s0 = np.array([x, y, theta, Tb, 1.0]);
 		self.Tp = Tp # Prefered temperature
 		self.G = G # Heat generation rate
@@ -80,7 +80,7 @@ class Agent:
 		E = u[4]
 		# Drives
 		dHeat = np.abs(Tb - self.Tp)/(42.0 - 30.0)
-		dFood = 10*np.heaviside(1 - E, 0.0)*(1 - E)
+		dFood = 2*np.heaviside(1 - E, 0.0)*(1 - E)
 		mu = np.linalg.norm(np.array([dHeat, dFood]))
 
 		dx = mu*np.array([np.cos(theta), np.sin(theta)])
@@ -90,7 +90,7 @@ class Agent:
 		dTb = self.G - self.k1*(Tb - Ta)*self.A - k2*(1 - self.A)*(Tb - Tc)
 		dE = -alpha*self.G + self.F
 		# nonlinearity
-		sigma = 0.5
+		sigma = 0.1
 		f = lambda x : 1.0/(1 + np.exp(-sigma*x))
 
 		if( dHeat > dFood ):
