@@ -95,10 +95,10 @@ class Agent:
 
 		if( dHeat > dFood ):
 			print('Temperature drive: {}'.format((Tb - self.Tp)))
-			dTheta = (Tb - self.Tp)*(Tr - Tl) 
+			dTheta = (Tb - self.Tp)*(Tl - Tr) 
 		else:
 			print('Energy Drives')
-			dTheta = f( E )
+			dTheta = f( (E - 0.9)*(Fl - Fr) )
 
 		return mu, np.array([dx[0], dx[1], dTheta, dTb, dE ])
 
