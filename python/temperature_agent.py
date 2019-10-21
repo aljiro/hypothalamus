@@ -99,7 +99,7 @@ class Agent:
 			dTheta = f((Tb - self.Tp)*(Tr - Tl))
 		else:
 			print('Energy Drives')
-			dTheta = f( E )
+			dTheta = f( (E - 0.9)*(Fl - Fr) )
 
 		return mu, np.array([dx[0], dx[1], dTheta, dTb, dE ])
 
