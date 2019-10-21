@@ -24,17 +24,18 @@ class Agent:
 						 [np.sin(theta), np.cos(theta), y], 
 						 [0, 0, 1]])
 
-	def updateSensorPositions( self, h, mu, x, y, theta0, theta ):
-		alpha = np.dot(self.orientation, theta)
-		M = self.getTransformation(0, 0, theta)
-		c = np.array([x, y, 0])
+	def updateSensorPositions( self, x, y, theta ):
+		u = np.array([-np.sin(theta), np.cos(theta)])
 
-		for s in self.sensors:
-			pos = self.sensors[s]
-			pos[[0,1]] += h*mu*np.array([np.cos(theta0), np.sin(theta0)])
-			self.sensors[s] = np.dot(M, pos - c) + c
+		signs = { 'T_left': -1,
+				'T_right': 1, 
+				'F_left': -1,
+				'F_right': 1 }
 
-		self.orientation = M[[0,1],[0,1]]*self.orientation
+		for key, s in self.sensors.items():
+			pos = s
+			pos[[0,1]] = signs[key]*self.radius*u + [x,y]
+			self.sensors[key] = pos
 
 	def initSensors(self, x, y, theta):
 		pl = np.array([self.radius, 0, 1])
@@ -72,8 +73,6 @@ class Agent:
 		Fl = self.getSensorData( 'F_right' )
 
 		Ta = (Tl + Tr)/2.0
-
-		print('la: {}, Tr: {}'.format(Tl, Tr))
 		# State variables
 		theta = u[2]
 		Tb = u[3]
@@ -82,43 +81,45 @@ class Agent:
 		dHeat = np.abs(Tb - self.Tp)/np.abs(40.0 - 35.0)
 		dFood = np.heaviside(1 - E, 0.0)*(1 - E)
 		# Parameters
-		mu = 2*np.linalg.norm(np.array([dHeat, dFood]))
+		mu = 5*np.linalg.norm(np.array([dHeat, dFood]))
+		print('Drive heat: {}, Drive food: {}'.format(dHeat, dFood))
 		k2 = 1.0
 		Tc = Tb # No contact
-		alpha = 1.0
+		alpha = 0.5
 		# nonlinearity
 		sigma = 0.1
-		f = lambda x : 1.0/(1 + np.exp(-sigma*x))
+		f = lambda x : 2*x/15.0 if abs(x)<15 else 2*np.sign(x)
 		# Diff Equations	
 		dx = mu*np.array([np.cos(theta), np.sin(theta)])
 		dTb = self.G - self.k1*(Tb - Ta)*self.A - k2*(1 - self.A)*(Tb - Tc)
 		dE = -alpha*self.G + self.F
 		
 		if( dHeat > dFood ):
-			print('Temperature drive: {}'.format(dHeat))
-			dTheta = f((Tb - self.Tp)*(Tr - Tl))
+			print('Temperature drives: {}, {}'.format((Tb - self.Tp),f((Tb - self.Tp))))
+			print('Tl: {}, Tr: {}'.format(Tl, Tr))
+			dTheta = f((Tb - self.Tp)*(Tl - Tr)) + np.random.rand()
 		else:
-			print('Energy Drives')
-			dTheta = f( (E - 0.9)*(Fl - Fr) )
+			print('Energy drives')
+			print('Fl: {}, Fr: {}'.format(Fl, Fr))
+			dTheta = (E - 0.9)*(Fl - Fr)
 
-		return mu, np.array([dx[0], dx[1], dTheta, dTb, dE ])
+		return np.array([dx[0], dx[1], dTheta, dTb, dE ])
 
 
 	def step( self, c_step, h, t ):
-		mu, dr = self.dmap( self.state[:, c_step], t )
+		dr = self.dmap( self.state[:, c_step], t )
 		self.state[:, c_step + 1] = self.state[:, c_step] + h*dr
 		self.state[4] = np.heaviside(self.state[4], 0.5)*self.state[4]
 		# moving/ acting
-		dTheta = dr[2]
-
 		self.F = 0
 		self.theta = self.state[2, c_step + 1]
 		self.x = self.state[0, c_step + 1]
 		self.y = self.state[1, c_step + 1]
-		self.updateSensorPositions( h, mu, self.x, self.y, self.state[2, c_step], self.theta )
+		self.updateSensorPositions( self.x, self.y, self.theta )
 		self.F = self.enviroment.getFood( self.x, self.y )
 
 	def draw( self ):
+		print( 'x: {}, y: {}'.format(self.x, self.y) )
 		c = plt.Circle( (self.x, self.y), self.radius, color = 'k' )
 		p1 = self.sensors['T_left']
 		p2 = self.sensors['T_right']
@@ -163,10 +164,13 @@ class Enviroment:
 		return signal
 
 	def getFood( self, x, y ):		
+		print('Getting food source!') 
 		for i in range(len(self.food_sources)):
 			x0,y0 = self.food_sources[i]
+			print('Position of the food source: {},{}'.format(x0,y0))
 
-			if( np.linalg.norm(np.array([x-x0, y-y0])) < 0.1 ):
+			if( np.linalg.norm(np.array([x-x0, y-y0])) < 3.0 ):
+				print( 'Got food source' )
 				return 1.0
 			
 		return 0.0
@@ -284,7 +288,7 @@ class Simulation:
 
 if __name__ == '__main__':
 	s = Simulation()
-	a = Agent( x = 85.0, y = 50.0, theta = np.pi, Tb = 37.0 )
+	a = Agent( x = 20.0, y = 50.0, theta = np.pi, Tb = 37.0 )
 	s.addAgent( a )
 	s.addFoodSource( 20, 20  )
 	s.run( 10.0 )
