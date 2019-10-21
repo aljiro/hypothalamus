@@ -79,23 +79,24 @@ class Agent:
 		Tb = u[3]
 		E = u[4]
 		# Drives
-		dHeat = np.abs(Tb - self.Tp)/(42.0 - 30.0)
-		dFood = 2*np.heaviside(1 - E, 0.0)*(1 - E)
-		mu = np.linalg.norm(np.array([dHeat, dFood]))
-
-		dx = mu*np.array([np.cos(theta), np.sin(theta)])
+		dHeat = np.abs(Tb - self.Tp)/np.abs(40.0 - 35.0)
+		dFood = np.heaviside(1 - E, 0.0)*(1 - E)
+		# Parameters
+		mu = 2*np.linalg.norm(np.array([dHeat, dFood]))
 		k2 = 1.0
 		Tc = Tb # No contact
 		alpha = 1.0
-		dTb = self.G - self.k1*(Tb - Ta)*self.A - k2*(1 - self.A)*(Tb - Tc)
-		dE = -alpha*self.G + self.F
 		# nonlinearity
 		sigma = 0.1
 		f = lambda x : 1.0/(1 + np.exp(-sigma*x))
-
+		# Diff Equations	
+		dx = mu*np.array([np.cos(theta), np.sin(theta)])
+		dTb = self.G - self.k1*(Tb - Ta)*self.A - k2*(1 - self.A)*(Tb - Tc)
+		dE = -alpha*self.G + self.F
+		
 		if( dHeat > dFood ):
-			print('Temperature drive: {}'.format((Tb - self.Tp)))
-			dTheta = (Tb - self.Tp)*(Tr - Tl) 
+			print('Temperature drive: {}'.format(dHeat))
+			dTheta = f((Tb - self.Tp)*(Tr - Tl))
 		else:
 			print('Energy Drives')
 			dTheta = f( E )
@@ -114,7 +115,6 @@ class Agent:
 		self.theta = self.state[2, c_step + 1]
 		self.x = self.state[0, c_step + 1]
 		self.y = self.state[1, c_step + 1]
-		print("theta: {}".format(self.theta))
 		self.updateSensorPositions( h, mu, self.x, self.y, self.state[2, c_step], self.theta )
 		self.F = self.enviroment.getFood( self.x, self.y )
 
@@ -284,7 +284,7 @@ class Simulation:
 
 if __name__ == '__main__':
 	s = Simulation()
-	a = Agent( x = 50.0, y = 50.0, theta = np.pi, Tb = 37.0 )
+	a = Agent( x = 85.0, y = 50.0, theta = np.pi, Tb = 37.0 )
 	s.addAgent( a )
 	s.addFoodSource( 20, 20  )
 	s.run( 10.0 )
