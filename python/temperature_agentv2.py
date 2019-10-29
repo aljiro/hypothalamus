@@ -1,5 +1,7 @@
 import numpy as np 
 import matplotlib.pyplot as plt
+# Maps
+from brains import *
 
 # --------------------------------------------------------------------
 # Enviroment: Contains the main behaviour of the agent
@@ -70,47 +72,10 @@ class Agent:
 		Tl = self.getSensorData( 'T_left' )
 		Tr = self.getSensorData( 'T_right' )
 		Fr = self.getSensorData( 'F_left' )
-		Fl = self.getSensorData( 'F_right' )
+		Fl = self.getSensorData( 'F_right' )	
 
-		Ta = (Tl + Tr)/2.0
-		# State variables
-		theta = u[2]
-		Tb = u[3]
-		E = u[4]
-
-		# Drives
-		wH = 1/np.abs(40.0 - 30.0)
-		dHeat = (1 + wH*np.abs(Tb - self.Tp))**2
-		wE = 1.0
-		dFood = (1 + wE*(1 - E))**2
-		# Motivation
-		mu = (dHeat**2 + dFood**2)/2
-		vmax = 5.0
-
-		# Parameters
-		print('Drive heat: {}, Drive food: {}, mu: {}'.format(dHeat, dFood, mu))
-		k2 = 1.0
-		Tc = Tb # No contact
-		alpha = 0.5
-		# nonlinearity
-		sigma = 0.1
-		f = lambda x : 3.14*x/15.0 if abs(x)<15 else 2*np.sign(x)
-		# Diff Equations	
-		dx = mu*vmax*np.array([np.cos(theta), np.sin(theta)])
-		dTb = self.G - self.k1*(Tb - Ta)*self.A - k2*(1 - self.A)*(Tb - Tc)
-		dE = -alpha*self.G + self.F
-		
-		if( dHeat > dFood ):
-			print('Temperature drives: {}, {}'.format((Tb - self.Tp),f((Tb - self.Tp))))
-			print('Tl: {}, Tr: {}'.format(Tl, Tr))
-			dTheta = f((Tb - self.Tp)*(Tl - Tr)) + np.random.rand()#np.heaviside(-np.sign(dTb)*np.sign(Tb-self.Tp), 0.0)*0.1
-			print(dTheta)
-		else:
-			print('Energy drives')
-			print('Fl: {}, Fr: {}'.format(Fl, Fr))
-			dTheta = (E - 0.9)*(Fl - Fr)
-
-		return np.array([dx[0], dx[1], dTheta, dTb, dE ])
+		# return temperature_map( u, self.Tp, Tl, Tr, self.G, self.k1, 0.0, self.A )
+		return food_map( u, Fl, Fr, self.G, self.F, 0.9 )
 
 
 	def step( self, c_step, h, t ):
@@ -125,13 +90,14 @@ class Agent:
 		self.updateSensorPositions( self.x, self.y, self.theta )
 		self.F = self.enviroment.getFood( self.x, self.y )
 
-	def draw( self ):
-		print( 'x: {}, y: {}'.format(self.x, self.y) )
-		c = plt.Circle( (self.x, self.y), self.radius, color = 'k' )
-		p1 = self.sensors['T_left']
-		p2 = self.sensors['T_right']
-		cs1 = plt.Circle( (p1[0], p1[1]), 1, color = [0.5,0.5,0.5] )
-		cs2 = plt.Circle( (p2[0], p2[1]), 1, color = [0.5,0.5,0.5] )
+	def draw( self, offset ):
+		x = self.x + offset[0]
+		y = self.y + offset[1]
+		c = plt.Circle( (x, y), self.radius, color = 'k' )
+		p1 = self.sensors['T_left'] 
+		p2 = self.sensors['T_right'] 
+		cs1 = plt.Circle( (p1[0] + offset[0], p1[1] + offset[1]), 1, color = [0.5,0.5,0.5] )
+		cs2 = plt.Circle( (p2[0] + offset[0], p2[1] + offset[1]), 1, color = [0.5,0.5,0.5] )
 		fig = plt.gcf()
 		ax = fig.gca()
 		ax.add_artist(c)
@@ -171,10 +137,10 @@ class Enviroment:
 		return signal
 
 	def getFood( self, x, y ):		
-		print('Getting food source!') 
+		# print('Getting food source!') 
 		for i in range(len(self.food_sources)):
 			x0,y0 = self.food_sources[i]
-			print('Position of the food source: {},{}'.format(x0,y0))
+			# print('Position of the food source: {},{}'.format(x0,y0))
 
 			if( np.linalg.norm(np.array([x-x0, y-y0])) < 3.0 ):
 				print( 'Got food source' )
@@ -182,7 +148,7 @@ class Enviroment:
 			
 		return 0.0
 
-	def draw( self ):
+	def draw( self, offset ):
 		delta = 1.0
 		cax = plt.gca()
 
@@ -201,6 +167,8 @@ class Enviroment:
 
 		for i in range(len(self.food_sources)):
 			x0,y0 = self.food_sources[i]
+			x0 += offset[0]
+			y0 += offset[1]
 
 			x = np.arange(0, self.w, delta)
 			y = np.arange(0, self.h, delta)
@@ -229,6 +197,7 @@ class Simulation:
 		self.ax_temp = plt.axes([0.52, 0.7, 0.46, 0.2])	
 		self.ax_energy = plt.axes([0.52, 0.42, 0.46, 0.2])	
 		self.observed = None
+		self.offset = np.array([0,0])
 
 	def addAgent( self, a, observe = 1.0 ):
 		a.enviroment = self.enviroment
@@ -248,11 +217,24 @@ class Simulation:
 		plt.xlabel('x')
 		plt.ylabel('y')
 		# Setting figure properties
-		plt.ion()
-		self.enviroment.draw()
+		plt.ion()		
 
 		for a in self.agents:
-			a.draw()
+			if a.x + self.offset[0] > self.enviroment.w :
+				self.offset[0] = -self.enviroment.w - self.offset[0] + a.x - 10.0
+			if a.y + self.offset[1] > self.enviroment.h:
+				self.offset[1] = -self.enviroment.h - self.offset[1] + a.y - 10.0
+			if a.x + self.offset[0] < 0:
+				self.offset[0] = -a.x + self.offset[0] + 10.0
+			if a.y + self.offset[1] < 0:
+				self.offset[1] = -a.y + self.offset[1] + 10.0
+
+			a.draw( self.offset )
+
+		self.enviroment.draw( self.offset )
+
+		for a in self.agents:
+			a.draw( self.offset )
 
 		a = self.agents[self.observed]	
 		plt.sca(self.ax_temp)	
@@ -295,7 +277,7 @@ class Simulation:
 
 if __name__ == '__main__':
 	s = Simulation()
-	a = Agent( x = 20.0, y = 50.0, theta = np.pi, Tb = 37.0 )
+	a = Agent( x = 90.0, y = 80.0, theta = np.pi, Tb = 37.0 )
 	s.addAgent( a )
-	s.addFoodSource( 20, 20  )
+	s.addFoodSource( 40, 40  )
 	s.run( 10.0 )
