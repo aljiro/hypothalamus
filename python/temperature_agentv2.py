@@ -80,12 +80,12 @@ class Agent:
 
 		# Drives
 		wH = 1/np.abs(40.0 - 30.0)
-		dHeat = (1 + wH*np.abs(Tb - self.Tp))**3/2**3
+		dHeat = (1 + wH*np.abs(Tb - self.Tp))**2
 		wE = 1.0
-		dFood = (1 + wE*(1 - E))**3/2**3
+		dFood = (1 + wE*(1 - E))**2
 		# Motivation
 		mu = (dHeat**2 + dFood**2)/2
-		vmax = 150
+		vmax = 5.0
 
 		# Parameters
 		print('Drive heat: {}, Drive food: {}, mu: {}'.format(dHeat, dFood, mu))
