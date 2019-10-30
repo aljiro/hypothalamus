@@ -21,6 +21,7 @@ class Agent:
 		self.state = None
 		self.orientation = [np.cos(theta), np.sin(theta)]
 		self.U = None
+		self.trace = None
 
 	def getTransformation( self, x, y, theta ):
 		return np.array([[np.cos(theta), -np.sin(theta), x], 
@@ -54,6 +55,7 @@ class Agent:
 	def init( self, tf, h ):
 		m = int(tf/h)
 
+		self.trace = np.zeros( (2, m) )
 		self.state = np.zeros( (self.s0.size, m) )
 		self.state[:,0] = self.s0
 
@@ -93,8 +95,10 @@ class Agent:
 		self.y = self.state[1, c_step + 1]
 		self.updateSensorPositions( self.x, self.y, self.theta )
 		self.F = self.enviroment.getFood( self.x, self.y )
+		self.trace[:,c_step] = [self.x, self.y]
 
-	def draw( self, offset ):
+	def draw( self, c_step, offset ):
+		plt.plot( self.trace[0,:c_step], self.trace[1,:c_step], 'k--')
 		x = self.x + offset[0]
 		y = self.y + offset[1]
 		c = plt.Circle( (x, y), self.radius, color = 'k' )
@@ -234,12 +238,10 @@ class Simulation:
 			if a.y + self.offset[1] < 0:
 				self.offset[1] = -a.y + self.offset[1] + 10.0
 
-			a.draw( self.offset )
-
 		self.enviroment.draw( self.offset )
 
 		for a in self.agents:
-			a.draw( self.offset )
+			a.draw( c_step, self.offset )
 
 		a = self.agents[self.observed]	
 		plt.sca(self.ax_temp)	

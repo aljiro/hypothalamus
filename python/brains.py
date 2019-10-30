@@ -97,12 +97,12 @@ def competition_map( u, Tp, Tl, Tr, Fr, Fl, G, k1, k2, A, F, Ep ):
 	# food drives
 	wE = 1.0
 	dFood = (1 + wE*(Ep - E))**2 - 1.0
-	mu_food = ge(dFood)
+	mu_food = dFood#ge(dFood)
 	# Temperature drives
 	wH = 1/np.abs(40.0 - 20.0)
 	dHeat = (1 + wH*np.abs(Tb - Tp))**2 - 1
 	# Motivation
-	mu_temperature = gt(dHeat)
+	mu_temperature = dHeat#gt(dHeat)
 	print( 'mu_food: {}, E: {},  mu_temperature: {}'.format(mu_food, E-Ep, mu_temperature))
 	mu = (mu_food + mu_temperature)*(1 - F) + he(E)
 	vmax = 5.0
@@ -119,7 +119,8 @@ def competition_map( u, Tp, Tl, Tr, Fr, Fl, G, k1, k2, A, F, Ep ):
 	U = lambda rho: (1.0/4.0)*rho**2*(1 - rho)**2 + a*rho**2 + b*(1 - rho)**2
 	dU = lambda rho: (1.0/2.0)*(rho*((1-rho)**2 + a) - (1-rho)*(rho**2 + b))
 
-	dx = mu*vmax*np.array([np.cos(theta), np.sin(theta)]) + (1/(0.2 + mu))*np.array([np.random.rand(), np.random.rand()])*0.1
+	print((1/(0.2 + mu)))
+	dx = mu*vmax*np.array([np.cos(theta), np.sin(theta)]) + 5.0*(1/(0.2 + mu))*np.array([np.random.rand(), np.random.rand()])
 	dTb = G - k1*(Tb - Ta)*A - k2*(1 - A)*(Tb - Tc)
 	dE = -alpha*G + F
 	dTheta_temperature = ft((Tb - Tp)**3*(Tl - Tr)) + np.random.rand() - 0.5
