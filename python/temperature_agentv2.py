@@ -77,7 +77,7 @@ class Agent:
 
 		# return temperature_map( u, self.Tp, Tl, Tr, self.G, self.k1, 0.0, self.A )
 		# return food_map( u, Fl, Fr, self.G, self.F, 0.9 )
-		state, U = competition_map( u, self.Tp, Tl, Tr, Fr, Fl, self.G, self.k1, 0.0, self.A, self.F, 0.9 )
+		state, U = competition_map( u, self.Tp, Tl, Tr, Fr, Fl, self.G, self.k1, 0.0, self.A, self.F, 0.99 )
 		self.U = U
 		return state
 

@@ -79,7 +79,7 @@ def competition_map( u, Tp, Tl, Tr, Fr, Fl, G, k1, k2, A, F, Ep ):
 	# Temperature helper functions
 	sigma_t = 15.0
 	G_t = 10.0
-	x0_t = 0.2
+	x0_t = 0.5
 	ft = lambda x : np.pi*x/15.0 if abs(x)<15.0 else np.pi*np.sign(x)
 	gt = lambda x : G_t/(1 + np.exp(-sigma_t*(x-x0_t)))
 	# Ambient temperature
@@ -119,7 +119,7 @@ def competition_map( u, Tp, Tl, Tr, Fr, Fl, G, k1, k2, A, F, Ep ):
 	U = lambda rho: (1.0/4.0)*rho**2*(1 - rho)**2 + a*rho**2 + b*(1 - rho)**2
 	dU = lambda rho: (1.0/2.0)*(rho*((1-rho)**2 + a) - (1-rho)*(rho**2 + b))
 
-	dx = mu*vmax*np.array([np.cos(theta), np.sin(theta)])
+	dx = mu*vmax*np.array([np.cos(theta), np.sin(theta)]) + (1/(0.2 + mu))*np.array([np.random.rand(), np.random.rand()])*0.1
 	dTb = G - k1*(Tb - Ta)*A - k2*(1 - A)*(Tb - Tc)
 	dE = -alpha*G + F
 	dTheta_temperature = ft((Tb - Tp)**3*(Tl - Tr)) + np.random.rand() - 0.5
