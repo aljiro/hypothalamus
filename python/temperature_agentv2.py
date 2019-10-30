@@ -9,7 +9,7 @@ from brains import *
 class Agent:
 
 	def __init__(self, x, y, theta, Tb, Tp = 37.0, radius = 2.0, k1 = 0.99, G = 0.4 ):
-		self.s0 = np.array([x, y, theta, Tb, 1.0]);
+		self.s0 = np.array([x, y, theta, Tb, 1.0, 0.0]); # x, y, theta, Tb, E, rho
 		self.Tp = Tp # Prefered temperature
 		self.G = G # Heat generation rate
 		self.k1 = k1
@@ -20,6 +20,7 @@ class Agent:
 		self.F = 0
 		self.state = None
 		self.orientation = [np.cos(theta), np.sin(theta)]
+		self.U = None
 
 	def getTransformation( self, x, y, theta ):
 		return np.array([[np.cos(theta), -np.sin(theta), x], 
@@ -75,7 +76,10 @@ class Agent:
 		Fl = self.getSensorData( 'F_right' )	
 
 		# return temperature_map( u, self.Tp, Tl, Tr, self.G, self.k1, 0.0, self.A )
-		return food_map( u, Fl, Fr, self.G, self.F, 0.9 )
+		# return food_map( u, Fl, Fr, self.G, self.F, 0.9 )
+		state, U = competition_map( u, self.Tp, Tl, Tr, Fr, Fl, self.G, self.k1, 0.0, self.A, self.F, 0.9 )
+		self.U = U
+		return state
 
 
 	def step( self, c_step, h, t ):
@@ -196,6 +200,7 @@ class Simulation:
 		self.ax.set_position([0.07, 0.1, 0.4, 0.7])
 		self.ax_temp = plt.axes([0.52, 0.7, 0.46, 0.2])	
 		self.ax_energy = plt.axes([0.52, 0.42, 0.46, 0.2])	
+		self.ax_potential = plt.axes([0.52, 0.10, 0.46, 0.2])
 		self.observed = None
 		self.offset = np.array([0,0])
 
@@ -221,9 +226,9 @@ class Simulation:
 
 		for a in self.agents:
 			if a.x + self.offset[0] > self.enviroment.w :
-				self.offset[0] = -self.enviroment.w - self.offset[0] + a.x - 10.0
+				self.offset[0] = self.enviroment.w + self.offset[0] - a.x - 10.0
 			if a.y + self.offset[1] > self.enviroment.h:
-				self.offset[1] = -self.enviroment.h - self.offset[1] + a.y - 10.0
+				self.offset[1] = self.enviroment.h + self.offset[1] - a.y - 10.0
 			if a.x + self.offset[0] < 0:
 				self.offset[0] = -a.x + self.offset[0] + 10.0
 			if a.y + self.offset[1] < 0:
@@ -240,13 +245,21 @@ class Simulation:
 		plt.sca(self.ax_temp)	
 		plt.cla()
 		self.ax_temp.plot(self.time[:c_step], a.state[3,:c_step])
-		self.ax_temp.axis([0, tf, 0, 40])	
+		self.ax_temp.axis([0, tf, 0, 45])	
 		self.ax_temp.set_title('Tb')	
 		plt.sca(self.ax_energy)
 		plt.cla()
 		self.ax_energy.plot(self.time[:c_step], a.state[4,:c_step])
 		self.ax_energy.axis([0, tf, 0, 1.1])
 		self.ax_energy.set_title('E')
+		plt.sca( self.ax_potential )
+		plt.cla()
+
+		if a.U is not None:
+			x = np.linspace(-1.0, 2.0, 100)
+			self.ax_potential.plot( x, a.U(x))
+
+		self.ax_potential.set_title('Potential')
 		plt.sca(self.ax)
 
 		#ax.margins(x = 0)
@@ -280,4 +293,4 @@ if __name__ == '__main__':
 	a = Agent( x = 90.0, y = 80.0, theta = np.pi, Tb = 37.0 )
 	s.addAgent( a )
 	s.addFoodSource( 40, 40  )
-	s.run( 10.0 )
+	s.run( 20.0 )
