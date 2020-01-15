@@ -114,12 +114,12 @@ def competition_map( u, Tp, Tl, Tr, Fr, Fl, G, k1, k2, A, F, Ep ):
 	n1 = (np.abs(a) + np.abs(b))
 	a = a/n1
 	b = b/n1
-	print( 'a: {}, b: {}, rho: {}'.format(a, b, rho) )	
+	#print( 'a: {}, b: {}, rho: {}'.format(a, b, rho) )	
 	# Potential
 	U = lambda rho: (1.0/4.0)*rho**2*(1 - rho)**2 + a*rho**2 + b*(1 - rho)**2
 	dU = lambda rho: (1.0/2.0)*(rho*((1-rho)**2 + a) - (1-rho)*(rho**2 + b))
 
-	print((1/(0.2 + mu)))
+	#print((1/(0.2 + mu)))
 	dx = mu*vmax*np.array([np.cos(theta), np.sin(theta)]) + 5.0*(1/(0.2 + mu))*np.array([np.random.rand(), np.random.rand()])
 	dTb = G - k1*(Tb - Ta)*A - k2*(1 - A)*(Tb - Tc)
 	dE = -alpha*G + F
