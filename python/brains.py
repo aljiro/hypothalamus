@@ -97,13 +97,13 @@ def competition_map( u, Tp, Tl, Tr, Fr, Fl, G, k1, k2, A, F, Ep ):
 	# food drives
 	wE = 1.0
 	dFood = (1 + wE*(Ep - E))**2 - 1.0
-	mu_food = dFood#ge(dFood)
+	mu_food = ge(dFood)
 	# Temperature drives
 	wH = 1/np.abs(40.0 - 20.0)
 	dHeat = (1 + wH*np.abs(Tb - Tp))**2 - 1
 	# Motivation
-	mu_temperature = dHeat#gt(dHeat)
-	print( 'mu_food: {}, E: {},  mu_temperature: {}'.format(mu_food, E-Ep, mu_temperature))
+	mu_temperature = gt(dHeat)
+	#print( 'mu_food: {}, E: {},  mu_temperature: {}'.format(mu_food, E-Ep, mu_temperature))
 	mu = (mu_food + mu_temperature)*(1 - F) + he(E)
 	vmax = 5.0
 	alpha = 0.5
@@ -128,4 +128,4 @@ def competition_map( u, Tp, Tl, Tr, Fr, Fl, G, k1, k2, A, F, Ep ):
 	dTheta = gc(rho,0)*dTheta_temperature + gc(rho, 1)*dTheta_energy
 	dRho = -10*dU( rho )
 
-	return np.array([dx[0], dx[1], dTheta, dTb, dE, dRho ]), U
+	return np.array([dx[0], dx[1], dTheta, dTb, dE, dRho ]), U, mu, dHeat, dFood, a, b

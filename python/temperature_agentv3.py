@@ -10,7 +10,11 @@ import time
 class Agent:
 
 	def __init__(self, x, y, theta, Tb, Tp = 37.0, radius = 2.0, k1 = 0.99, G = 0.4 ):
-		self.s0 = np.array([x, y, theta, Tb, 1.0, 0.0]); # x, y, theta, Tb, E, rho
+		Tb0 = Tb
+		E0 = 1.0
+		rho0 = 0.0
+
+		self.s0 = np.array([x, y, theta, Tb0, E0, rho0]); # x, y, theta, Tb, E, rho
 		self.Tp = Tp # Prefered temperature
 		self.G = G # Heat generation rate
 		self.k1 = k1
@@ -82,6 +86,10 @@ class Agent:
 
 		# return temperature_map( u, self.Tp, Tl, Tr, self.G, self.k1, 0.0, self.A )
 		# return food_map( u, Fl, Fr, self.G, self.F, 0.9 )
+		state_i = drive_map()
+		state_motiv = motivation_map()
+		state_motor = motor_map()
+
 		state, U, mu, DT, DF, a, b = competition_map( u, self.Tp, Tl, Tr, Fr, Fl, self.G, self.k1, 0.0, self.A, self.F, 0.99 )
 		self.U = U
 		return state, mu, DT, DF, a, b
