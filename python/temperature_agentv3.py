@@ -9,15 +9,13 @@ import time
 # --------------------------------------------------------------------
 class Agent:
 
-	def __init__(self, x, y, theta, Tb, Tp = 37.0, radius = 2.0, k1 = 0.99, G = 0.4 ):
+	def __init__(self, x, y, theta, Tb = 37.0, E = 0, radius = 2.0 ):
 		Tb0 = Tb
-		E0 = 1.0
+		E0 = E
 		rho0 = 0.0
 
 		self.s0 = np.array([x, y, theta, Tb0, E0, rho0]); # x, y, theta, Tb, E, rho
 		self.Tp = Tp # Prefered temperature
-		self.G = G # Heat generation rate
-		self.k1 = k1
 		self.A = 2*np.pi*radius
 		self.radius = radius
 		self.enviroment = None
@@ -78,37 +76,39 @@ class Agent:
 		else:
 			return self.enviroment.getFoodSignal( pos[0], pos[1] )
 
-	def dmap( self, u, t ):
-		Tl = self.getSensorData( 'T_left' )
-		Tr = self.getSensorData( 'T_right' )
-		Fr = self.getSensorData( 'F_left' )
-		Fl = self.getSensorData( 'F_right' )	
+	# def dmap( self, u, t ):
+	# 	Tl = self.getSensorData( 'T_left' )
+	# 	Tr = self.getSensorData( 'T_right' )
+	# 	Fr = self.getSensorData( 'F_left' )
+	# 	Fl = self.getSensorData( 'F_right' )	
 
-		# return temperature_map( u, self.Tp, Tl, Tr, self.G, self.k1, 0.0, self.A )
-		# return food_map( u, Fl, Fr, self.G, self.F, 0.9 )
-		state_i = drive_map()
-		state_motiv = motivation_map()
-		state_motor = motor_map()
+	# 	# return temperature_map( u, self.Tp, Tl, Tr, self.G, self.k1, 0.0, self.A )
+	# 	# return food_map( u, Fl, Fr, self.G, self.F, 0.9 )
+	# 	state_i = drive_map()
+	# 	state_motiv = motivation_map()
+	# 	state_incentives = incentive_map()
+	# 	state_motor = motor_map()
 
-		state, U, mu, DT, DF, a, b = competition_map( u, self.Tp, Tl, Tr, Fr, Fl, self.G, self.k1, 0.0, self.A, self.F, 0.99 )
-		self.U = U
-		return state, mu, DT, DF, a, b
+	# 	state, U, mu, DT, DF, a, b = competition_map( u, self.Tp, Tl, Tr, Fr, Fl, self.G, self.k1, 0.0, self.A, self.F, 0.99 )
+	# 	self.U = U
+	# 	return state, mu, DT, DF, a, b
 
 
 	def step( self, c_step, h, t ):
-		dr, mu, DT, DF, a, b = self.dmap( self.state[:, c_step], t )
+		dr, params = self.dmap( self.state[:, c_step], t )
 		self.state[:, c_step + 1] = self.state[:, c_step] + h*dr
-		self.state[4] = np.heaviside(self.state[4], 0.5)*self.state[4]
-		self.data['mu'][c_step+1] = mu
-		self.data['DT'][c_step+1] = DT
-		self.data['DF'][c_step+1] = DF
-		self.data['a'][c_step+1] = a
-		self.data['b'][c_step+1] = b
+		# self.state[4] = np.heaviside(self.state[4], 0.5)*self.state[4]
+		# self.data['mu'][c_step+1] = mu
+		# self.data['DT'][c_step+1] = DT
+		# self.data['DF'][c_step+1] = DF
+		# self.data['a'][c_step+1] = a
+		# self.data['b'][c_step+1] = b
 		# moving/ acting
 		self.F = 0
-		self.theta = self.state[2, c_step + 1]
+		self.theta = np.atan(dr[1]/dr[0])
 		self.x = self.state[0, c_step + 1]
 		self.y = self.state[1, c_step + 1]
+		
 		self.updateSensorPositions( self.x, self.y, self.theta )
 		self.F = self.enviroment.getFood( self.x, self.y )
 		self.trace[:,c_step] = [self.x, self.y]
