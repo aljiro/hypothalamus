@@ -5,17 +5,18 @@ from brains import *
 import time
 
 # --------------------------------------------------------------------
-# Enviroment: Contains the main behaviour of the agent
+# Agent: Represents the physical body of the 
 # --------------------------------------------------------------------
 class Agent:
 
-	def __init__(self, x, y, theta, Tb = 37.0, E = 0, radius = 2.0 ):
+	def __init__(self, x, y, theta, brain, Tb = 37.0, E = 0, radius = 2.0 ):
 		Tb0 = Tb
 		E0 = E
 		rho0 = 0.0
 
+		self.brain = brain
+
 		self.s0 = np.array([x, y, theta, Tb0, E0, rho0]); # x, y, theta, Tb, E, rho
-		self.Tp = Tp # Prefered temperature
 		self.A = 2*np.pi*radius
 		self.radius = radius
 		self.enviroment = None
@@ -55,7 +56,6 @@ class Agent:
 					'T_right': np.dot(M,pr), 
 					'F_left': np.dot(M,pl),
 					'F_right': np.dot(M,pr) }
-
 	def init( self, tf, h ):
 		m = int(tf/h)
 
@@ -95,7 +95,7 @@ class Agent:
 
 
 	def step( self, c_step, h, t ):
-		dr, params = self.dmap( self.state[:, c_step], t )
+		dr, params = self.brain.dmap( self.state[:, c_step], t )
 		self.state[:, c_step + 1] = self.state[:, c_step] + h*dr
 		# self.state[4] = np.heaviside(self.state[4], 0.5)*self.state[4]
 		# self.data['mu'][c_step+1] = mu
